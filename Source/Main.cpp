@@ -639,6 +639,7 @@ private:
                     else if (pedalIdx == UNDO)
                     {
                         ledOn(pedalIdx);
+                        sendMidiMessage(virtMidiOut_, MidiMessage::noteOn(channel_, baseNote_+pedalIdx, (uint8)127));
                     }
                     else
                     {
@@ -656,11 +657,12 @@ private:
                     else if (pedalIdx == UNDO)
                     {
                         ledOff(pedalIdx);
+                        sendMidiMessage(virtMidiOut_, MidiMessage::noteOff(channel_, baseNote_+pedalIdx, (uint8)0));
                         updateLoops();
                     }
                     else
                     {
-                        sendMidiMessage(virtMidiOut_, MidiMessage::noteOff(channel_, baseNote_+pedalIdx, (uint8)127));
+                        sendMidiMessage(virtMidiOut_, MidiMessage::noteOff(channel_, baseNote_+pedalIdx, (uint8)0));
                     }
                     break;
                 default:
