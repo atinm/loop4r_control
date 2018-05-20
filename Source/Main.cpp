@@ -1,10 +1,29 @@
 /*
+ * This file is part of loop4r_control.
+ * Copyright (C) 2018 Atin Malaviya.  https://www.github.com/atinm
+ *
+ * loop4r_control is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * loop4r_control is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+/*
  ==============================================================================
+ loop4r_control for controlling sooperlooper via an FCB1010 with the EurekaProm
+ set to I/O mode. The goal is to allow control of sooperlooper via just the
+ controller and have the LEDs etc reflect the state of sooperlooper.
  
- This file was auto-generated!
- 
- It contains the basic startup code for a JUCE application.
- 
+ Forked from the https://github.com/gbevin/ReceiveMIDI and
+ https://github.com/gbevin/SendMIDI source as a MIDI starting point.
  ==============================================================================
  */
 
@@ -57,7 +76,6 @@ enum LedStates
 
 static const String& DEFAULT_VIRTUAL_OUT_NAME = "loop4r_control_out";
 static const int DEFAULT_BASE_NOTE = 64;
-static const int NUM_PEDALS = 12;
 static const int NUM_LED_PEDALS = 10;
 static const int UP = 10;
 static const int DOWN = 11;
