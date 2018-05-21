@@ -5,6 +5,8 @@ controller and have the LEDs etc reflect the state of sooperlooper.
 Forked from the https://github.com/gbevin/ReceiveMIDI and
 https://github.com/gbevin/SendMIDI source as a MIDI starting point.
 
+Note: MAC OS X Only - for some reason JUCE 5 doesn't like virtual midi devices.
+
 To use it, start sooperlooper with the included session and midi configuration files
 that contain four stereo loops and midi bindings. Start loop4r_control and then
 use Jack and MIDI Patchbay to set up your audio in/out and have the virtual midi

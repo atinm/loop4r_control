@@ -902,6 +902,9 @@ private:
                 }
                 systemRequestedQuit();
                 break;
+            case CHANNEL:
+                channel_ = asDecOrHex7BitValue(cmd.opts_[0]);
+                break;
             case DEVICE_IN:
             {
                 midiIn_ = nullptr;
