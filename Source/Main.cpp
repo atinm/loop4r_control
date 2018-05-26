@@ -21,7 +21,7 @@
  loop4r_control for controlling sooperlooper via an FCB1010 with the EurekaProm
  set to I/O mode. The goal is to allow control of sooperlooper via just the
  controller and have the LEDs etc reflect the state of sooperlooper.
- 
+
  Forked from the https://github.com/gbevin/ReceiveMIDI and
  https://github.com/gbevin/SendMIDI source as a MIDI starting point.
  ==============================================================================
@@ -100,7 +100,7 @@ struct ApplicationCommand
     {
         return {"", "", NONE, 0, "", ""};
     }
-    
+
     void clear()
     {
         param_ = "";
@@ -110,7 +110,7 @@ struct ApplicationCommand
         commandDescription_ = "";
         opts_.clear();
     }
-    
+
     String param_;
     String altParam_;
     CommandIndex command_;
@@ -138,7 +138,7 @@ struct Loop {
     int index_;
     LoopStates state_;
     LED& led_;
-    
+
     void clear()
     {
         // we don't clear index_
@@ -168,12 +168,12 @@ public:
         commands_.add({"base",  "base note",        BASE_NOTE,          1, "number",         "Starting note"});
         commands_.add({"oin",   "osc in",           OSC_IN,             1, "number",         "OSC receive port"});
         commands_.add({"oout",  "osc out",          OSC_OUT,            1, "number",         "OSC send port"});
-        
+
         for (auto i=0; i<NUM_LEDS; i++)
         {
             leds_.add({i, false, TIMER_OFF, Dark});
         }
-        
+
         channel_ = 1;
         baseNote_ = DEFAULT_BASE_NOTE;
         selected_ = 0;
@@ -191,11 +191,11 @@ public:
         engineId_ = 0;
         currentCommand_ = ApplicationCommand::Dummy();
     }
-    
+
     const String getApplicationName() override       { return ProjectInfo::projectName; }
     const String getApplicationVersion() override    { return ProjectInfo::versionString; }
     bool moreThanOneInstanceAllowed() override       { return false; }
-    
+
     //==============================================================================
     void initialise (const String& commandLine) override
     {
@@ -212,9 +212,9 @@ public:
             systemRequestedQuit();
             return;
         }
-        
+
         parseParameters(cmdLineParams);
-        
+
         if (cmdLineParams.contains("--"))
         {
             while (std::cin)
@@ -225,7 +225,7 @@ public:
                 parseParameters(params);
             }
         }
-        
+
         if (cmdLineParams.isEmpty())
         {
             printUsage();
@@ -236,13 +236,13 @@ public:
             startTimer(200);
         }
     }
-    
+
     void timerCallback() override
     {
         if (fullMidiInName_.isNotEmpty() && !MidiInput::getDevices().contains(fullMidiInName_))
         {
             std::cerr << "MIDI input port \"" << fullMidiInName_ << "\" got disconnected, waiting." << std::endl;
-            
+
             fullMidiInName_ = String();
             midiIn_ = nullptr;
         }
@@ -253,7 +253,7 @@ public:
                 std::cerr << "Connected to MIDI input port \"" << fullMidiInName_ << "\"." << std::endl;
             }
         }
-        
+
         if (midiOutName_.isNotEmpty() && midiOut_ == nullptr)
         {
             int index = MidiOutput::getDevices().indexOf(midiOutName_);
@@ -285,7 +285,7 @@ public:
                     ledOff(i);
             }
         }
-        
+
         if (slMidiOutName_.isNotEmpty() && virtMidiOutName_.isEmpty() && slMidiOut_ == nullptr)
         {
             int index = MidiOutput::getDevices().indexOf(slMidiOutName_);
@@ -311,7 +311,7 @@ public:
                 std::cerr << "Couldn't find SooperLooper MIDI input port \"" << slMidiOutName_ << "\" to output to." << std::endl;
             }
         }
-        
+
 #if (JUCE_LINUX || JUCE_MAC)
         if (virtMidiOutName_.isNotEmpty() && slMidiOutName_.isEmpty() && slMidiOut_ == nullptr)
         {
@@ -325,7 +325,7 @@ public:
             exit;
 #endif
         }
-        
+
         if (currentReceivePort_ < 0 || currentSendPort_ < 0) {
             if (tryToConnectOsc())
             {
@@ -355,7 +355,7 @@ public:
             {
                 --heartbeat_;
             }
-            
+
             // handle pedal led state for blinking pedals
             for (auto&& loop : loops_)
             {
@@ -380,7 +380,7 @@ public:
             }
         }
     }
-    
+
     void updateLoops()
     {
         for (auto&& loop : loops_)
@@ -388,7 +388,7 @@ public:
             updateLoopLedState(loop, loop.state_);
         }
     }
-    
+
     void updateLoopLedState(Loop& loop, LoopStates newState)
     {
         switch (newState)
@@ -480,7 +480,7 @@ public:
                 loop.led_.timer_ = TIMER_OFF;
                 break;
         }
-        
+
         if (newState != loop.state_)
         {
             // turn off any leds that are no longer active
@@ -504,14 +504,14 @@ public:
         }
         loop.state_ = newState;
     }
-    
+
     void shutdown() override
     {
         // Add your application's shutdown code here..
-        
-        
+
+
     }
-    
+
     //==============================================================================
     void systemRequestedQuit() override
     {
@@ -519,7 +519,7 @@ public:
         // request and let the app carry on running, or call quit() to allow the app to close.
         quit();
     }
-    
+
     void anotherInstanceStarted (const String& commandLine) override
     {
         // When another instance of the app is launched while this one is running,
@@ -529,7 +529,7 @@ public:
     void suspended() override {}
     void resumed() override {}
     void unhandledException(const std::exception*, const String&, int) override { jassertfalse; }
-    
+
 private:
     ApplicationCommand* findApplicationCommand(const String& param)
     {
@@ -542,7 +542,7 @@ private:
         }
         return nullptr;
     }
-    
+
     StringArray parseLineAsParameters(const String& line)
     {
         StringArray parameters;
@@ -558,7 +558,7 @@ private:
         }
         return parameters;
     }
-    
+
     void handleVarArgCommand()
     {
         if (currentCommand_.expectedOptions_ < 0)
@@ -566,18 +566,18 @@ private:
             executeCommand(currentCommand_);
         }
     }
-    
+
     void parseParameters(StringArray& parameters)
     {
         for (String param : parameters)
         {
             if (param == "--") continue;
-            
+
             ApplicationCommand* cmd = findApplicationCommand(param);
             if (cmd)
             {
                 handleVarArgCommand();
-                
+
                 currentCommand_ = *cmd;
             }
             else if (currentCommand_.command_ == NONE)
@@ -593,31 +593,31 @@ private:
                 currentCommand_.opts_.add(param);
                 currentCommand_.expectedOptions_ -= 1;
             }
-            
+
             // handle fixed arg commands
             if (currentCommand_.expectedOptions_ == 0)
             {
                 executeCommand(currentCommand_);
             }
         }
-        
+
         handleVarArgCommand();
     }
-    
+
     void parseFile(File file)
     {
         StringArray parameters;
-        
+
         StringArray lines;
         file.readLines(lines);
         for (String line : lines)
         {
             parameters.addArray(parseLineAsParameters(line));
         }
-        
+
         parseParameters(parameters);
     }
-    
+
     void sendMidiMessage(MidiOutput *midiOut, const MidiMessage&& msg)
     {
         if (midiOut)
@@ -634,12 +634,12 @@ private:
             }
         }
     }
-    
+
     bool checkChannel(const MidiMessage& msg, int channel)
     {
         return channel == 0 || msg.getChannel() == channel;
     }
-    
+
     void handleIncomingMidiMessage(MidiInput*, const MidiMessage& msg) override
     {
         if (!filterCommands_.isEmpty())
@@ -657,13 +657,13 @@ private:
                         break;
                 }
             }
-            
+
             if (!filtered)
             {
                 return;
             }
         }
-        
+
         if (msg.isController()) {
             int pedalIdx = pedalIndex(msg.getControllerValue());
             switch (msg.getControllerNumber()) {
@@ -720,7 +720,7 @@ private:
                 break;
             }
         }
-        
+
         if (msg.isNoteOn())
         {
             std::cout << "channel "  << outputChannel(msg) << "   " <<
@@ -784,12 +784,12 @@ private:
         else if (msg.isSysEx())
         {
             std::cout << "system-exclusive";
-            
+
             if (!useHexadecimalsByDefault_)
             {
                 std::cout << " hex";
             }
-            
+
             int size = msg.getSysExDataSize();
             const uint8* data = msg.getSysExData();
             while (size--)
@@ -797,7 +797,7 @@ private:
                 uint8 b = *data++;
                 std::cout << " " << output7BitAsHex(b);
             }
-            
+
             if (!useHexadecimalsByDefault_)
             {
                 std::cout << " dec" << std::endl;
@@ -820,12 +820,12 @@ private:
             std::cout << "tune-request" << std::endl;
         }
     }
-    
+
     String output7BitAsHex(int v)
     {
         return String::toHexString(v).paddedLeft('0', 2).toUpperCase();
     }
-    
+
     String output7Bit(int v)
     {
         if (useHexadecimalsByDefault_)
@@ -837,12 +837,12 @@ private:
             return String(v);
         }
     }
-    
+
     String output14BitAsHex(int v)
     {
         return String::toHexString(v).paddedLeft('0', 4).toUpperCase();
     }
-    
+
     String output14Bit(int v)
     {
         if (useHexadecimalsByDefault_)
@@ -854,7 +854,7 @@ private:
             return String(v);
         }
     }
-    
+
     String outputNote(const MidiMessage& msg)
     {
         if (noteNumbersOutput_)
@@ -866,17 +866,17 @@ private:
             return MidiMessage::getMidiNoteName(msg.getNoteNumber(), true, true, octaveMiddleC_).paddedLeft(' ', 4);
         }
     }
-    
+
     String outputChannel(const MidiMessage& msg)
     {
         return output7Bit(msg.getChannel()).paddedLeft(' ', 2);
     }
-    
+
     bool tryToConnectMidiInput()
     {
         MidiInput* midi_input = nullptr;
         String midi_input_name;
-        
+
         int index = MidiInput::getDevices().indexOf(midiInName_);
         if (index >= 0)
         {
@@ -896,7 +896,7 @@ private:
                 }
             }
         }
-        
+
         if (midi_input)
         {
             midi_input->start();
@@ -904,10 +904,10 @@ private:
             fullMidiInName_ = midi_input_name;
             return true;
         }
-        
+
         return false;
     }
-    
+
     bool tryToConnectOsc() {
         if (currentSendPort_ < 0) {
             if (oscSender.connect ("127.0.0.1", oscSendPort_)) {
@@ -915,11 +915,11 @@ private:
                 currentSendPort_ = oscSendPort_;
             }
         }
-        
+
         if (currentReceivePort_ < 0) {
             connect();
         }
-        
+
         if (currentSendPort_ > 0 && currentReceivePort_ > 0) {
             if (!pinged_)
             {
@@ -927,10 +927,10 @@ private:
             }
             return true;
         }
-        
+
         return false;
     }
-    
+
     void executeCommand(ApplicationCommand& cmd)
     {
         switch (cmd.command_)
@@ -957,7 +957,7 @@ private:
             {
                 midiIn_ = nullptr;
                 midiInName_ = cmd.opts_[0];
-                
+
                 if (!tryToConnectMidiInput())
                 {
                     std::cerr << "Couldn't find MIDI input port \"" << midiInName_ << "\", waiting." << std::endl;
@@ -1073,12 +1073,12 @@ private:
                 break;
         }
     }
-    
+
     uint16 asPortNumber(String value)
     {
         return (uint16)limit16Bit(asDecOrHexIntValue(value));
     }
-    
+
     uint8 asNoteNumber(String value)
     {
         if (value.length() >= 2)
@@ -1099,7 +1099,7 @@ private:
                     case 'B': note = 11; break;
                     case 'H': note = 11; break;
                 }
-                
+
                 if (value[1] == 'B')
                 {
                     note -= 1;
@@ -1108,26 +1108,26 @@ private:
                 {
                     note += 1;
                 }
-                
+
                 note += (value.getTrailingIntValue() + 5 - octaveMiddleC_) * 12;
-                
+
                 return (uint8)limit7Bit(note);
             }
         }
-        
+
         return (uint8)limit7Bit(asDecOrHexIntValue(value));
     }
-    
+
     uint8 asDecOrHex7BitValue(String value)
     {
         return (uint8)limit7Bit(asDecOrHexIntValue(value));
     }
-    
+
     uint16 asDecOrHex14BitValue(String value)
     {
         return (uint16)limit14Bit(asDecOrHexIntValue(value));
     }
-    
+
     int asDecOrHexIntValue(String value)
     {
         if (value.endsWithIgnoreCase("H"))
@@ -1147,22 +1147,22 @@ private:
             return value.getIntValue();
         }
     }
-    
+
     static uint8 limit7Bit(int value)
     {
         return (uint8)jlimit(0, 0x7f, value);
     }
-    
+
     static uint16 limit14Bit(int value)
     {
         return (uint16)jlimit(0, 0x3fff, value);
     }
-    
+
     static uint16 limit16Bit(int value)
     {
         return (uint16)jlimit(0, 0xffff, value);
     }
-    
+
     int pedalIndex(int controllerValue) {
         switch (controllerValue) {
             case 1:
@@ -1185,7 +1185,7 @@ private:
                 return controllerValue;
         }
     }
-    
+
     uint8 ledNumber(int pedalIdx) {
         switch (pedalIdx) {
             case 0:
@@ -1201,24 +1201,24 @@ private:
             case 9:
                 return 0;
             default:
-                return pedalIdx;
+                return pedalIdx+1;
         }
     }
-    
+
     void ledOn(int pedalIdx) {
         sendMidiMessage(midiOut_, MidiMessage::controllerEvent(channel_, 106, ledNumber(pedalIdx)));
         leds_.getReference(pedalIdx).on_ = true;
     }
-    
+
     void ledOff(int pedalIdx) {
         sendMidiMessage(midiOut_, MidiMessage::controllerEvent(channel_, 107, ledNumber(pedalIdx)));
         leds_.getReference(pedalIdx).on_ = false;
     }
-    
+
     void selectLoop() {
         sendMidiMessage(midiOut_, MidiMessage::controllerEvent(channel_, 108, selectedLoop_ + 1));
     }
-    
+
     void getCurrentState(int index)
     {
         String buf = "/sl";
@@ -1228,7 +1228,7 @@ private:
                        (String) "osc.udp://localhost:" + std::to_string(currentReceivePort_) + "/",
                        (String) "/ctrl");
     }
-    
+
     void registerAutoUpdates(int index, bool unreg)
     {
         String buf = "/sl";
@@ -1250,7 +1250,7 @@ private:
                            (String) "/ctrl");
         }
     }
-    
+
     void registerGlobalUpdates(bool unreg)
     {
         String buf = "";
@@ -1269,9 +1269,9 @@ private:
                            (String) "osc.udp://localhost:" + std::to_string(currentReceivePort_) + "/",
                            (String) "/ctrl");
         }
-        
+
     }
-    
+
     void handlePingAckMessage(const OSCMessage& message)
     {
         if (! message.isEmpty())
@@ -1302,7 +1302,7 @@ private:
                 }
                 i++;
             }
-            
+
             if (loopCount_ > 0)
             {
                 loops_.clear();
@@ -1317,7 +1317,7 @@ private:
             heartbeat_ = 5; // we just heard from the looper
         }
     }
-    
+
     void handleHeartbeatMessage(const OSCMessage& message)
     {
         if (! message.isEmpty())
@@ -1350,7 +1350,7 @@ private:
                 }
                 i++;
             }
-            
+
             if (uid != engineId_) {
                 // looper changed on us, reinitialize
                 if (numloops > 0)
@@ -1381,7 +1381,7 @@ private:
                     loopCount_ = numloops;
                 }
             }
-            
+
             if (heartbeatOn_)
                 ledOn(HEARTBEAT);
             else
@@ -1406,7 +1406,7 @@ private:
                 std::cerr << "unrecognized format for ctrl message." << std::endl;
                 return;
             }
-            
+
             if (loopIndex == -2)
             {
                 // global control update
@@ -1439,7 +1439,7 @@ private:
             }
         }
     }
-    
+
     void oscMessageReceived (const OSCMessage& message) override
     {
         if (!message.getAddressPattern().toString().startsWith("/heartbeat"))
@@ -1450,12 +1450,12 @@ private:
             + "', "
             + String (message.size())
             + " argument(s)" << std::endl;
-            
+
             for (OSCArgument* arg = message.begin(); arg != message.end(); ++arg)
             {
                 String typeAsString;
                 String valueAsString;
-                
+
                 if (arg->isFloat32())
                 {
                     typeAsString = "float32";
@@ -1481,9 +1481,9 @@ private:
                 {
                     typeAsString = "(unknown)";
                 }
-                
+
                 std::cout << "==- " + typeAsString.paddedRight(' ', 12) + valueAsString << std::endl;
-                
+
             }
         }
         if (message.getAddressPattern().toString().startsWith("/pingack"))
@@ -1499,22 +1499,22 @@ private:
             handleHeartbeatMessage(message);
         }
     }
-    
+
     void oscBundleReceived (const OSCBundle& bundle) override
     {
-        
+
     }
-    
+
     void connect()
     {
         auto portToConnect = oscReceivePort_;
-        
+
         if (! isValidOscPort (portToConnect))
         {
             handleInvalidPortNumberEntered();
             return;
         }
-        
+
         if (oscReceiver.connect (portToConnect))
         {
             currentReceivePort_ = portToConnect;
@@ -1530,7 +1530,7 @@ private:
             handleConnectError (portToConnect);
         }
     }
-    
+
     void disconnect()
     {
         if (oscReceiver.disconnect())
@@ -1544,38 +1544,38 @@ private:
             handleDisconnectError();
         }
     }
-    
+
     void handleConnectError (int failedPort)
     {
         std::cerr << "Error: could not connect to port " + String (failedPort) << std::endl;
     }
-    
+
     void handleDisconnectError()
     {
         std::cerr << "An unknown error occured while trying to disconnect from UDP port." << std::endl;
     }
-    
+
     void handleInvalidPortNumberEntered()
     {
         std::cout << "Error: you have entered an invalid UDP port number." << std::endl;
     }
-    
+
     bool isConnected() const
     {
         return currentReceivePort_ != -1;
     }
-    
+
     bool isValidOscPort (int port) const
     {
         return port > 0 && port < 65536;
     }
-    
+
     void printVersion()
     {
         std::cout << ProjectInfo::projectName << " v" << ProjectInfo::versionString << std::endl;
         std::cout << "https://github.com/atinm/loop4r_control" << std::endl;
     }
-    
+
     void printUsage()
     {
         printVersion();
@@ -1625,10 +1625,10 @@ private:
         << "first MIDI output port that contains the provided text, irrespective of case." << std::endl;
         std::cout << std::endl;
     }
-    
+
     OSCReceiver oscReceiver;
     OSCSender oscSender;
-    
+
     int currentReceivePort_ = -1;
     int currentSendPort_ = -1;
     int channel_;
@@ -1638,27 +1638,27 @@ private:
     int oscReceivePort_;
     int engineId_;
     int mode_;
-    
+
     Array<Loop> loops_;
     Array<LED> leds_;
     Array<ApplicationCommand> commands_;
     Array<ApplicationCommand> filterCommands_;
-    
+
     bool noteNumbersOutput_;
     int octaveMiddleC_;
     bool useHexadecimalsByDefault_;
-    
+
     String midiInName_;
     ScopedPointer<MidiInput> midiIn_;
     String fullMidiInName_;
-    
+
     String midiOutName_;
     ScopedPointer<MidiOutput> midiOut_;
-    
+
     String slMidiOutName_;
     ScopedPointer<MidiOutput> slMidiOut_;
     String virtMidiOutName_; // either slMidiOutName_ or virtMidiOutName_ are used, never both
-    
+
     int loopCount_;
     int selectedLoop_;
     bool pinged_;
@@ -1666,7 +1666,7 @@ private:
     String version_;
     int heartbeat_;
     bool heartbeatOn_ = false;
-    
+
     ApplicationCommand currentCommand_;
     Time lastTime_;
 };
