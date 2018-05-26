@@ -36,9 +36,9 @@ enum CommandIndex
 {
     NONE,
     LIST,
-    PANIC,
-    DEVICE_IN,
-    DEVICE_OUT,
+    FCB1010_IN,
+    FCB1010_OUT,
+    SL_OUT,
     VIRTUAL_OUT,
     CHANNEL,
     BASE_NOTE,
@@ -76,7 +76,7 @@ enum LedStates
 
 static const String& DEFAULT_VIRTUAL_OUT_NAME = "loop4r_control_out";
 static const int DEFAULT_BASE_NOTE = 64;
-static const int NUM_LED_PEDALS = 10;
+static const int NUM_LEDS = 23;
 static const int UP = 10;
 static const int DOWN = 11;
 
@@ -92,6 +92,7 @@ static const int INSERT = 6;
 static const int REPLACE = 7;
 static const int SUBSTITUTE = 8;
 static const int UNDO = 9;
+static const int HEARTBEAT = 22;
 
 struct ApplicationCommand
 {
@@ -158,17 +159,17 @@ public:
     //==============================================================================
     loop4r_controlApplication()
     {
-        commands_.add({"din",   "device in",        DEVICE_IN,          1, "name",           "Set the name of the MIDI input port"});
-        commands_.add({"dout",  "device out",       DEVICE_OUT,         1, "name",           "Set the name of the MIDI output port"});
+        commands_.add({"fin",   "fcb1010 midi in",  FCB1010_IN,         1, "name",           "Set the name of the FCB1010 MIDI input port"});
+        commands_.add({"fout",  "fcb1010 midi out", FCB1010_OUT,        1, "name",           "Set the name of the FCB1010 MIDI output port"});
+        commands_.add({"slout", "sooperlooper midi out", SL_OUT,        1, "name",           "Set the name of the SooperLooper MIDI input port"});
         commands_.add({"vout",  "virtual",          VIRTUAL_OUT,       -1, "(name)",         "Use virtual MIDI output port with optional name (Linux/macOS)"});
-        commands_.add({"panic", "",                 PANIC,              0, "",               "Sends all possible Note Offs and relevant panic CCs"});
         commands_.add({"list",  "",                 LIST,               0, "",               "Lists the MIDI ports"});
         commands_.add({"ch",    "channel",          CHANNEL,            1, "number",         "Set MIDI channel for the commands (0-16), defaults to 0"});
         commands_.add({"base",  "base note",        BASE_NOTE,          1, "number",         "Starting note"});
         commands_.add({"oin",   "osc in",           OSC_IN,             1, "number",         "OSC receive port"});
         commands_.add({"oout",  "osc out",          OSC_OUT,            1, "number",         "OSC send port"});
         
-        for (auto i=0; i<10; i++)
+        for (auto i=0; i<NUM_LEDS; i++)
         {
             leds_.add({i, false, TIMER_OFF, Dark});
         }
@@ -253,19 +254,71 @@ public:
             }
         }
         
-#if (JUCE_LINUX || JUCE_MAC)
-        if (virtMidiOutName_.isEmpty())
+        if (midiOutName_.isNotEmpty() && midiOut_ == nullptr)
         {
-            String name = DEFAULT_VIRTUAL_OUT_NAME;
-        
-            virtMidiOut_ = MidiOutput::createNewDevice(name);
-            if (virtMidiOut_ == nullptr)
+            int index = MidiOutput::getDevices().indexOf(midiOutName_);
+            if (index >= 0)
             {
-                std::cerr << "Couldn't create virtual MIDI output port \"" << name << "\"" << std::endl;
+                midiOut_ = MidiOutput::openDevice(index);
             }
             else
             {
-                virtMidiOutName_ = name;
+                StringArray devices = MidiOutput::getDevices();
+                for (int i = 0; i < devices.size(); ++i)
+                {
+                    if (devices[i].containsIgnoreCase(midiOutName_))
+                    {
+                        midiOut_ = MidiOutput::openDevice(i);
+                        midiOutName_ = devices[i];
+                        break;
+                    }
+                }
+            }
+            if (midiOut_ == nullptr)
+            {
+                std::cerr << "Couldn't find MIDI output port \"" << midiOutName_ << "\"" << std::endl;
+            }
+            else
+            {
+                // initialize the leds to off
+                for (auto i=0; i<NUM_LEDS; i++)
+                    ledOff(i);
+            }
+        }
+        
+        if (slMidiOutName_.isNotEmpty() && virtMidiOutName_.isEmpty() && slMidiOut_ == nullptr)
+        {
+            int index = MidiOutput::getDevices().indexOf(slMidiOutName_);
+            if (index >= 0)
+            {
+                slMidiOut_ = MidiOutput::openDevice(index);
+            }
+            else
+            {
+                StringArray devices = MidiOutput::getDevices();
+                for (int i = 0; i < devices.size(); ++i)
+                {
+                    if (devices[i].containsIgnoreCase(midiOutName_))
+                    {
+                        slMidiOut_ = MidiOutput::openDevice(i);
+                        slMidiOutName_ = devices[i];
+                        break;
+                    }
+                }
+            }
+            if (slMidiOut_ == nullptr)
+            {
+                std::cerr << "Couldn't find SooperLooper MIDI input port \"" << slMidiOutName_ << "\" to output to." << std::endl;
+            }
+        }
+        
+#if (JUCE_LINUX || JUCE_MAC)
+        if (virtMidiOutName_.isNotEmpty() && slMidiOutName_.isEmpty() && slMidiOut_ == nullptr)
+        {
+            slMidiOut_ = MidiOutput::createNewDevice(virtMidiOutName_);
+            if (slMidiOut_ == nullptr)
+            {
+                std::cerr << "Couldn't create virtual MIDI output port \"" << virtMidiOutName_ << "\"" << std::endl;
             }
 #else
             std::cerr << "Virtual MIDI output ports are not supported on Windows" << std::endl;
@@ -587,11 +640,6 @@ private:
         return channel == 0 || msg.getChannel() == channel;
     }
     
-    void display(int selected) {
-        sendMidiMessage(midiOut_, MidiMessage::controllerEvent(channel_, 113, (uint8)0));
-        sendMidiMessage(midiOut_, MidiMessage::controllerEvent(channel_, 114, (uint8)selected_));
-    }
-    
     void handleIncomingMidiMessage(MidiInput*, const MidiMessage& msg) override
     {
         if (!filterCommands_.isEmpty())
@@ -623,7 +671,7 @@ private:
                     lastTime_ = (Time::getCurrentTime());
                     if (pedalIdx >= 0 && pedalIdx <= 3)
                     {
-                        sendMidiMessage(virtMidiOut_, MidiMessage::noteOn(channel_, baseNote_+mode_+pedalIdx, (uint8)127));
+                        sendMidiMessage(slMidiOut_, MidiMessage::noteOn(channel_, baseNote_+mode_+pedalIdx, (uint8)127));
                     }
                     else if (pedalIdx == RECORD)
                     {
@@ -639,17 +687,17 @@ private:
                     else if (pedalIdx == UNDO)
                     {
                         ledOn(pedalIdx);
-                        sendMidiMessage(virtMidiOut_, MidiMessage::noteOn(channel_, baseNote_+pedalIdx, (uint8)127));
+                        sendMidiMessage(slMidiOut_, MidiMessage::noteOn(channel_, baseNote_+pedalIdx, (uint8)127));
                     }
                     else
                     {
-                        sendMidiMessage(virtMidiOut_, MidiMessage::noteOn(channel_, baseNote_+pedalIdx, (uint8)127));
+                        sendMidiMessage(slMidiOut_, MidiMessage::noteOn(channel_, baseNote_+pedalIdx, (uint8)127));
                     }
                     break;
                 case 105:
                     if (pedalIdx >= 0 && pedalIdx <= 3)
                     {
-                        sendMidiMessage(virtMidiOut_, MidiMessage::noteOff(channel_, baseNote_+mode_+pedalIdx, (uint8)0));
+                        sendMidiMessage(slMidiOut_, MidiMessage::noteOff(channel_, baseNote_+mode_+pedalIdx, (uint8)0));
                     }
                     else if (pedalIdx == RECORD)
                     {
@@ -657,17 +705,17 @@ private:
                     else if (pedalIdx == UNDO)
                     {
                         ledOff(pedalIdx);
-                        sendMidiMessage(virtMidiOut_, MidiMessage::noteOff(channel_, baseNote_+pedalIdx, (uint8)0));
+                        sendMidiMessage(slMidiOut_, MidiMessage::noteOff(channel_, baseNote_+pedalIdx, (uint8)0));
                         updateLoops();
                     }
                     else
                     {
-                        sendMidiMessage(virtMidiOut_, MidiMessage::noteOff(channel_, baseNote_+pedalIdx, (uint8)0));
+                        sendMidiMessage(slMidiOut_, MidiMessage::noteOff(channel_, baseNote_+pedalIdx, (uint8)0));
                     }
                     break;
                 default:
-                    if (virtMidiOut_) {
-                        virtMidiOut_->sendMessageNow(msg);
+                    if (slMidiOut_) {
+                        slMidiOut_->sendMessageNow(msg);
                     }
                 break;
             }
@@ -905,7 +953,7 @@ private:
             case CHANNEL:
                 channel_ = asDecOrHex7BitValue(cmd.opts_[0]);
                 break;
-            case DEVICE_IN:
+            case FCB1010_IN:
             {
                 midiIn_ = nullptr;
                 midiInName_ = cmd.opts_[0];
@@ -916,7 +964,7 @@ private:
                 }
                 break;
             }
-            case DEVICE_OUT:
+            case FCB1010_OUT:
             {
                 midiOut_ = nullptr;
                 midiOutName_ = cmd.opts_[0];
@@ -945,45 +993,63 @@ private:
                 else
                 {
                     // initialize the pedal leds to off
-                    for (auto i=0; i<NUM_LED_PEDALS; i++)
+                    for (auto i=0; i<NUM_LEDS; i++)
                         ledOff(i);
+                }
+                break;
+            }
+            case SL_OUT:
+            {
+                if (virtMidiOutName_.isNotEmpty())
+                {
+                    std::cerr << "Cannot have both slout and vout set in command line arguments." << std::endl;
+                    break;
+                }
+                slMidiOut_ = nullptr;
+                slMidiOutName_ = cmd.opts_[0];
+                int index = MidiOutput::getDevices().indexOf(slMidiOutName_);
+                if (index >= 0)
+                {
+                    slMidiOut_ = MidiOutput::openDevice(index);
+                }
+                else
+                {
+                    StringArray devices = MidiOutput::getDevices();
+                    for (int i = 0; i < devices.size(); ++i)
+                    {
+                        if (devices[i].containsIgnoreCase(slMidiOutName_))
+                        {
+                            slMidiOut_ = MidiOutput::openDevice(i);
+                            slMidiOutName_ = devices[i];
+                            break;
+                        }
+                    }
+                }
+                if (slMidiOut_ == nullptr)
+                {
+                    std::cerr << "Couldn't find SooperLooper MIDI input port\"" << slMidiOutName_ << "\" to output to." << std::endl;
                 }
                 break;
             }
             case VIRTUAL_OUT:
             {
 #if (JUCE_LINUX || JUCE_MAC)
-                String name = DEFAULT_VIRTUAL_OUT_NAME;
-                if (cmd.opts_.size())
+                if (slMidiOutName_.isNotEmpty())
                 {
-                    name = cmd.opts_[0];
+                    std::cerr << "Cannot have both slout and vout set in command line arguments." << std::endl;
+                    break;
                 }
-                virtMidiOut_ = MidiOutput::createNewDevice(name);
-                if (virtMidiOut_ == nullptr)
+                slMidiOut_ = nullptr;
+                virtMidiOutName_ = cmd.opts_[0];
+
+                slMidiOut_ = MidiOutput::createNewDevice(virtMidiOutName_);
+                if (slMidiOut_ == nullptr)
                 {
-                    std::cerr << "Couldn't create virtual MIDI output port \"" << name << "\"" << std::endl;
-                }
-                else
-                {
-                    virtMidiOutName_ = cmd.opts_[0];
+                    std::cerr << "Couldn't create virtual MIDI output port \"" << virtMidiOutName_ << "\"" << std::endl;
                 }
 #else
                 std::cerr << "Virtual MIDI output ports are not supported on Windows" << std::endl;
 #endif
-                break;
-            }
-            case PANIC:
-            {
-                for (int ch = 1; ch <= 16; ++ch)
-                {
-                    sendMidiMessage(virtMidiOut_, MidiMessage::controllerEvent(ch, 64, 0));
-                    sendMidiMessage(virtMidiOut_, MidiMessage::controllerEvent(ch, 120, 0));
-                    sendMidiMessage(virtMidiOut_, MidiMessage::controllerEvent(ch, 123, 0));
-                    for (int note = 0; note <= 127; ++note)
-                    {
-                        sendMidiMessage(virtMidiOut_, MidiMessage::noteOff(ch, note, (uint8)0));
-                    }
-                }
                 break;
             }
             case BASE_NOTE:
@@ -1150,12 +1216,7 @@ private:
     }
     
     void selectLoop() {
-        if (selectedLoop_ / 10 > 0)
-            sendMidiMessage(midiOut_, MidiMessage::controllerEvent(channel_, 113, (uint8)(selectedLoop_ / 10)));
-        else
-            sendMidiMessage(midiOut_, MidiMessage::controllerEvent(channel_, 113, (uint8)0));
-
-        sendMidiMessage(midiOut_, MidiMessage::controllerEvent(channel_, 114, (uint8)(selectedLoop_ % 10)));
+        sendMidiMessage(midiOut_, MidiMessage::controllerEvent(channel_, 108, selectedLoop_ + 1));
     }
     
     void getCurrentState(int index)
@@ -1320,6 +1381,12 @@ private:
                     loopCount_ = numloops;
                 }
             }
+            
+            if (heartbeatOn_)
+                ledOn(HEARTBEAT);
+            else
+                ledOff(HEARTBEAT);
+            heartbeatOn_ = !heartbeatOn_;
             heartbeat_ = 5; // we just heard from the looper
         }
     }
@@ -1588,8 +1655,9 @@ private:
     String midiOutName_;
     ScopedPointer<MidiOutput> midiOut_;
     
-    String virtMidiOutName_;
-    ScopedPointer<MidiOutput> virtMidiOut_;
+    String slMidiOutName_;
+    ScopedPointer<MidiOutput> slMidiOut_;
+    String virtMidiOutName_; // either slMidiOutName_ or virtMidiOutName_ are used, never both
     
     int loopCount_;
     int selectedLoop_;
@@ -1597,6 +1665,7 @@ private:
     String hostUrl_;
     String version_;
     int heartbeat_;
+    bool heartbeatOn_ = false;
     
     ApplicationCommand currentCommand_;
     Time lastTime_;
