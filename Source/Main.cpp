@@ -92,6 +92,9 @@ static const int INSERT = 6;
 static const int REPLACE = 7;
 static const int SUBSTITUTE = 8;
 static const int UNDO = 9;
+static const int CLEAR = 10;
+static const int MUTE = 11;
+
 static const int HEARTBEAT = 22;
 
 struct ApplicationCommand
@@ -689,6 +692,20 @@ private:
                         ledOn(pedalIdx);
                         sendMidiMessage(slMidiOut_, MidiMessage::noteOn(channel_, baseNote_+pedalIdx, (uint8)127));
                     }
+                    else if (pedalIdx == MUTE)
+                    {
+                        if (muteAll_)
+                        {
+                            ledOff(pedalIdx);
+                            sendMidiMessage(slMidiOut_, MidiMessage::noteOff(channel_, baseNote_+pedalIdx, (uint8)0));
+                        }
+                        else
+                        {
+                            ledOn(pedalIdx);
+                            sendMidiMessage(slMidiOut_, MidiMessage::noteOn(channel_, baseNote_+pedalIdx, (uint8)127));
+                        }
+                        muteAll_ = !muteAll_;
+                    }
                     else
                     {
                         sendMidiMessage(slMidiOut_, MidiMessage::noteOn(channel_, baseNote_+pedalIdx, (uint8)127));
@@ -707,6 +724,9 @@ private:
                         ledOff(pedalIdx);
                         sendMidiMessage(slMidiOut_, MidiMessage::noteOff(channel_, baseNote_+pedalIdx, (uint8)0));
                         updateLoops();
+                    }
+                    else if (pedalIdx == MUTE)
+                    {
                     }
                     else
                     {
@@ -1665,6 +1685,7 @@ private:
     String hostUrl_;
     String version_;
     int heartbeat_;
+    bool muteAll_ = false;
     bool heartbeatOn_ = false;
 
     ApplicationCommand currentCommand_;

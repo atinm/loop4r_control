@@ -9,7 +9,8 @@
 0 n 72  note substitute -3  0 1  norm 0 127 0
 0 n 73  note undo -3  0 1  norm 0 127 0
 0 n 74  note undo_all -1  0 1  norm 0 127 0
-0 n 75  note mute_on -1  0 1  norm 0 127 0
+0 on 75  note mute_on -1  0 1  norm 0 127 0
+0 off 75  note mute_off -1  0 1  norm 0 127 0
 0 n 84  note record_or_overdub_excl 0  0 1  norm 0 127 0
 0 n 85  note record_or_overdub_excl 1  0 1  norm 0 127 0
 0 n 86  note record_or_overdub_excl 2  0 1  norm 0 127 0
