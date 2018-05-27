@@ -1,1 +1,3 @@
-Builds/
+*/build/
+Builds/MacOSX/
+*~

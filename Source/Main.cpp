@@ -95,6 +95,7 @@ static const int UNDO = 9;
 static const int CLEAR = 10;
 static const int MUTE = 11;
 
+static const int MUTE_ON = 19;
 static const int HEARTBEAT = 22;
 
 struct ApplicationCommand
@@ -696,12 +697,12 @@ private:
                     {
                         if (muteAll_)
                         {
-                            ledOff(pedalIdx);
+                            ledOff(MUTE_ON);
                             sendMidiMessage(slMidiOut_, MidiMessage::noteOff(channel_, baseNote_+pedalIdx, (uint8)0));
                         }
                         else
                         {
-                            ledOn(pedalIdx);
+                            ledOn(MUTE_ON);
                             sendMidiMessage(slMidiOut_, MidiMessage::noteOn(channel_, baseNote_+pedalIdx, (uint8)127));
                         }
                         muteAll_ = !muteAll_;
